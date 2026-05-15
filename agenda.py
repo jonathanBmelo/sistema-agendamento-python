@@ -88,10 +88,10 @@ else:
     print("Opção inválida.")
 
 # ─────────────────────────────────────────
-# SERVIÇOS — só abre se autenticado
+# SERVIÇOS 
 # ─────────────────────────────────────────
 if autenticado:
-    servicos = buscar_servicos()  # ← carrega do banco
+    servicos = buscar_servicos()
 
     print("\n============= Serviços disponíveis =============")
     for numero, (nome, preco) in servicos.items():
@@ -99,9 +99,8 @@ if autenticado:
     print("=================================================")
     print("Digite 0 para finalizar a escolha.\n")
 
-    servicos_escolhidos     = []  # guarda tuplas (nome, preco)
-    servicos_ids_escolhidos = []  # guarda os ids para salvar no banco
-
+    servicos_escolhidos     = []  
+    servicos_ids_escolhidos = []  
     while True:
         escolha = input("Escolha o número do serviço (0 para finalizar): ")
 
