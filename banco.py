@@ -1,12 +1,16 @@
 import psycopg2
 import bcrypt
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def conectar():
     conn = psycopg2.connect(
-        host="localhost",
-        database="agendamento",
-        user="postgres",
-        password="admin"
+        host=os.getenv("DB_HOST"),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
     )
     return conn
 
@@ -95,7 +99,6 @@ def cadastrar_usuario(nome, celular, email, senha):
 
     try:
         senha_hash = bcrypt.hashpw(senha.encode("utf-8"), bcrypt.gensalt())
-        print(f"DEBUG — valor sendo inserido no banco: {senha_hash.decode('utf-8')}")  # ← adiciona
 
         cursor.execute("""
             INSERT INTO usuarios (nome, celular, email, senha)
