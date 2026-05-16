@@ -3,7 +3,8 @@ import bcrypt
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+from pathlib import Path
+load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 def conectar():
     conn = psycopg2.connect(
