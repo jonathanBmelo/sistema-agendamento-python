@@ -3,11 +3,11 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Testes temporários
+
 teste_bcrypt.py
 
-# Variáveis de ambiente (senhas e chaves de API)
+
 .env
 
-# VS Code
+
 .vscode/

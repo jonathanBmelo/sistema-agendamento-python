@@ -1,9 +1,9 @@
 import psycopg2
 import bcrypt
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-from pathlib import Path
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 def conectar():
@@ -19,16 +19,17 @@ def criar_tabelas():
     conn = conectar()
     cursor = conn.cursor()
 
+    # Tabela de clientes — sem senha, sem login
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios (
+        CREATE TABLE IF NOT EXISTS clientes (
             id       SERIAL PRIMARY KEY,
             nome     VARCHAR(100) NOT NULL,
             celular  VARCHAR(11)  NOT NULL,
-            email    VARCHAR(100) NOT NULL UNIQUE,
-            senha    VARCHAR(100) NOT NULL
+            email    VARCHAR(100)
         )
     """)
 
+    # Tabela de serviços
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS servicos (
             id    SERIAL PRIMARY KEY,
@@ -37,21 +38,33 @@ def criar_tabelas():
         )
     """)
 
+    # Tabela de agendamentos
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agendamentos (
             id          SERIAL PRIMARY KEY,
-            usuario_id  INTEGER NOT NULL REFERENCES usuarios(id),
+            cliente_id  INTEGER NOT NULL REFERENCES clientes(id),
             data        DATE    NOT NULL,
             horario     TIME    NOT NULL,
             total       INTEGER NOT NULL
         )
     """)
 
+    # Tabela que liga agendamentos aos serviços
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agendamento_servicos (
             agendamento_id  INTEGER NOT NULL REFERENCES agendamentos(id),
             servico_id      INTEGER NOT NULL REFERENCES servicos(id),
             PRIMARY KEY (agendamento_id, servico_id)
+        )
+    """)
+
+    # Tabela da atendente — só ela faz login
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS atendentes (
+            id    SERIAL PRIMARY KEY,
+            nome  VARCHAR(100) NOT NULL,
+            email VARCHAR(100) NOT NULL UNIQUE,
+            senha VARCHAR(100) NOT NULL
         )
     """)
 
@@ -93,60 +106,50 @@ def popular_servicos():
     conn.commit()
     cursor.close()
     conn.close()
+    print("Serviços cadastrados com sucesso!")
 
-def cadastrar_usuario(nome, celular, email, senha):
+def cadastrar_cliente(nome, celular, email=None):
     conn = conectar()
     cursor = conn.cursor()
 
     try:
-        senha_hash = bcrypt.hashpw(senha.encode("utf-8"), bcrypt.gensalt())
-
         cursor.execute("""
-            INSERT INTO usuarios (nome, celular, email, senha)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO clientes (nome, celular, email)
+            VALUES (%s, %s, %s)
             RETURNING id
-        """, (nome, celular, email, senha_hash.decode("utf-8")))
+        """, (nome, celular, email))
 
-        usuario_id = cursor.fetchone()[0]
+        cliente_id = cursor.fetchone()[0]
         conn.commit()
         cursor.close()
         conn.close()
-        print(f"Usuário cadastrado com sucesso! ID: {usuario_id}")
-        return True
+        return {"sucesso": True, "cliente_id": cliente_id}
 
-    except psycopg2.errors.UniqueViolation:
+    except Exception as erro:
         conn.rollback()
         cursor.close()
         conn.close()
-        print("Este e-mail já está cadastrado.")
-        return False
+        return {"sucesso": False, "erro": str(erro)}
 
-def buscar_usuario(email, senha):
+def buscar_clientes():
     conn = conectar()
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT id, nome, email, senha
-        FROM usuarios
-        WHERE email = %s
-    """, (email,))
+        SELECT id, nome, celular, email
+        FROM clientes
+        ORDER BY nome
+    """)
 
-    usuario = cursor.fetchone()
+    resultados = cursor.fetchall()
     cursor.close()
     conn.close()
 
-    if usuario is None:
-        return None
+    clientes = []
+    for id, nome, celular, email in resultados:
+        clientes.append({"id": id, "nome": nome, "celular": celular, "email": email})
 
-    # Compara a senha digitada com o hash salvo no banco
-    if not bcrypt.checkpw(senha.encode("utf-8"), usuario[3].encode("utf-8")):
-        return None
-
-    return {
-        "id":    usuario[0],
-        "nome":  usuario[1],
-        "email": usuario[2],
-    }
+    return clientes
 
 def buscar_servicos():
     conn = conectar()
@@ -168,16 +171,16 @@ def buscar_servicos():
 
     return servicos
 
-def salvar_agendamento(usuario_id, data, horario, servicos_escolhidos, total):
+def salvar_agendamento(cliente_id, data, horario, servicos_escolhidos, total):
     conn = conectar()
     cursor = conn.cursor()
 
     try:
         cursor.execute("""
-            INSERT INTO agendamentos (usuario_id, data, horario, total)
+            INSERT INTO agendamentos (cliente_id, data, horario, total)
             VALUES (%s, %s, %s, %s)
             RETURNING id
-        """, (usuario_id, data, horario, total))
+        """, (cliente_id, data, horario, total))
 
         agendamento_id = cursor.fetchone()[0]
 
@@ -190,7 +193,6 @@ def salvar_agendamento(usuario_id, data, horario, servicos_escolhidos, total):
         conn.commit()
         cursor.close()
         conn.close()
-        print("Agendamento salvo com sucesso!")
         return True
 
     except Exception as erro:
@@ -198,6 +200,86 @@ def salvar_agendamento(usuario_id, data, horario, servicos_escolhidos, total):
         cursor.close()
         conn.close()
         print(f"Erro ao salvar agendamento: {erro}")
+        return False
+
+def buscar_agenda_do_dia(data):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            a.id,
+            c.nome,
+            c.celular,
+            a.horario,
+            a.total
+        FROM agendamentos a
+        JOIN clientes c ON c.id = a.cliente_id
+        WHERE a.data = %s
+        ORDER BY a.horario
+    """, (data,))
+
+    resultados = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    agenda = []
+    for id, nome, celular, horario, total in resultados:
+        agenda.append({
+            "id":      id,
+            "nome":    nome,
+            "celular": celular,
+            "horario": str(horario),
+            "total":   total
+        })
+
+    return agenda
+
+def login_atendente(email, senha):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, nome, email, senha
+        FROM atendentes
+        WHERE email = %s
+    """, (email,))
+
+    atendente = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if atendente is None:
+        return None
+
+    if not bcrypt.checkpw(senha.encode("utf-8"), atendente[3].encode("utf-8")):
+        return None
+
+    return {"id": atendente[0], "nome": atendente[1], "email": atendente[2]}
+
+def cadastrar_atendente(nome, email, senha):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    try:
+        senha_hash = bcrypt.hashpw(senha.encode("utf-8"), bcrypt.gensalt())
+
+        cursor.execute("""
+            INSERT INTO atendentes (nome, email, senha)
+            VALUES (%s, %s, %s)
+        """, (nome, email, senha_hash.decode("utf-8")))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("Atendente cadastrada com sucesso!")
+        return True
+
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        print("E-mail já cadastrado.")
         return False
 
 # ── Só executa ao rodar banco.py diretamente ──
