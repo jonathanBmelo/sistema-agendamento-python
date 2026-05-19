@@ -1,0 +1,252 @@
+/* ─── Reset básico ─── */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+body {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+/* ─── Tela de login ─── */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #fce4ec;
+}
+
+.login-box {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.login-box h1 {
+    font-size: 24px;
+    color: #c2185b;
+    margin-bottom: 8px;
+}
+
+.login-box h2 {
+    font-size: 16px;
+    color: #888;
+    margin-bottom: 24px;
+    font-weight: normal;
+}
+
+/* ─── Campos de formulário ─── */
+.campo {
+    text-align: left;
+    margin-bottom: 16px;
+}
+
+.campo label {
+    display: block;
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.campo input, .campo select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border 0.2s;
+}
+
+.campo input:focus, .campo select:focus {
+    border-color: #c2185b;
+}
+
+/* ─── Botões ─── */
+button {
+    width: 100%;
+    padding: 12px;
+    background-color: #c2185b;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 8px;
+}
+
+button:hover {
+    background-color: #ad1457;
+}
+
+button.secundario {
+    background-color: #eee;
+    color: #333;
+}
+
+button.secundario:hover {
+    background-color: #ddd;
+}
+
+/* ─── Mensagens ─── */
+.mensagem-erro {
+    background-color: #ffebee;
+    color: #c62828;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.mensagem-sucesso {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+/* ─── Painel principal ─── */
+.header {
+    background-color: #c2185b;
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    font-size: 18px;
+}
+
+.header span {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.container {
+    max-width: 900px;
+    margin: 24px auto;
+    padding: 0 16px;
+}
+
+/* ─── Cards ─── */
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    margin-bottom: 24px;
+}
+
+.card h2 {
+    font-size: 16px;
+    color: #c2185b;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+/* ─── Tabela da agenda ─── */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+table th {
+    text-align: left;
+    padding: 10px;
+    background-color: #fce4ec;
+    color: #c2185b;
+    font-weight: 600;
+}
+
+table td {
+    padding: 10px;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+table tr:hover td {
+    background-color: #fafafa;
+}
+
+/* ─── Serviços checkboxes ─── */
+.servicos-lista {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.servico-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.servico-item:hover {
+    background-color: #fce4ec;
+    border-color: #c2185b;
+}
+
+.servico-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #c2185b;
+}
+
+/* ─── Total ─── */
+.total {
+    text-align: right;
+    font-size: 16px;
+    font-weight: 600;
+    color: #c2185b;
+    margin-top: 8px;
+}
+
+/* ─── Busca de clientes ─── */
+#sugestoes-clientes {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    margin-top: 4px;
+}
+
+.sugestao-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.sugestao-item:hover {
+    background-color: #fce4ec;
+    color: #c2185b;
+}
+
+.sugestao-item span {
+    color: #aaa;
+    font-size: 12px;
+    margin-left: 8px;
+}

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel - Clínica de Estética</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <!-- Cabeçalho -->
+    <div class="header">
+        <h1>💆 Clínica de Estética</h1>
+        <span id="nome-atendente"></span>
+        <button class="secundario" style="width:auto; padding: 8px 16px;" onclick="sair()">Sair</button>
+    </div>
+
+    <div class="container">
+
+        <!-- Agenda do dia -->
+        <div class="card">
+            <h2>📅 Agenda do dia</h2>
+            <div style="display:flex; gap:8px; margin-bottom:16px;">
+                <input type="date" id="data-agenda" style="padding:8px; border:1px solid #ddd; border-radius:8px;">
+                <button style="width:auto; padding:8px 16px;" onclick="buscarAgenda()">Buscar</button>
+            </div>
+            <table id="tabela-agenda">
+                <thead>
+                    <tr>
+                        <th>Horário</th>
+                        <th>Cliente</th>
+                        <th>Celular</th>
+                        <th>Serviços</th>
+                        <th>Observação</th>
+                        <th>Total</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-agenda">
+                    <tr><td colspan="7" style="text-align:center; color:#aaa;">Selecione uma data</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Cadastrar cliente -->
+        <div class="card">
+            <h2>👤 Cadastrar cliente</h2>
+
+            <div id="erro-cliente" class="mensagem-erro" style="display:none;"></div>
+            <div id="sucesso-cliente" class="mensagem-sucesso" style="display:none;"></div>
+
+            <div class="campo">
+                <label>Nome</label>
+                <input type="text" id="cliente-nome" placeholder="Nome completo">
+            </div>
+            <div class="campo">
+                <label>Celular (com DDD)</label>
+                <input type="text" id="cliente-celular" placeholder="41991713860">
+            </div>
+            <div class="campo">
+                <label>E-mail (opcional)</label>
+                <input type="email" id="cliente-email" placeholder="cliente@email.com">
+            </div>
+
+            <button onclick="cadastrarCliente()">Cadastrar</button>
+        </div>
+
+        <!-- Lista de clientes -->
+        <div class="card">
+            <h2>📋 Clientes cadastrados</h2>
+            <div style="margin-bottom:12px;">
+                <input type="text" id="filtro-lista-clientes" placeholder="Buscar cliente..." 
+                       oninput="filtrarListaClientes()"
+                       style="padding:8px; border:1px solid #ddd; border-radius:8px; width:100%;">
+            </div>
+            <table id="tabela-clientes" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Celular</th>
+                        <th>E-mail</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-clientes">
+                    <tr><td colspan="4" style="text-align:center; color:#aaa;">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal de edição -->
+        <div id="modal-editar" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999;">
+            <div style="background:white; border-radius:12px; padding:32px; max-width:400px; margin:100px auto;">
+                <h2 style="color:#c2185b; margin-bottom:16px;">✏️ Editar cliente</h2>
+
+                <input type="hidden" id="editar-id">
+
+                <div class="campo">
+                    <label>Nome</label>
+                    <input type="text" id="editar-nome">
+                </div>
+                <div class="campo">
+                    <label>Celular</label>
+                    <input type="text" id="editar-celular">
+                </div>
+                <div class="campo">
+                    <label>E-mail</label>
+                    <input type="email" id="editar-email">
+                </div>
+
+                <div style="display:flex; gap:8px; margin-top:16px;">
+                    <button onclick="salvarEdicao()">Salvar</button>
+                    <button class="secundario" onclick="fecharModal()">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Novo agendamento -->
+        <div class="card">
+            <h2>🗓️ Novo agendamento</h2>
+
+            <div id="erro-agendamento" class="mensagem-erro" style="display:none;"></div>
+            <div id="sucesso-agendamento" class="mensagem-sucesso" style="display:none;"></div>
+
+            <div class="campo">
+                <label>Cliente</label>
+                <input type="text" id="busca-cliente" placeholder="Digite o nome ou celular..." 
+                       oninput="filtrarClientes()" autocomplete="off">
+                <div id="sugestoes-clientes" style="display:none;"></div>
+                <input type="hidden" id="agendamento-cliente">
+            </div>
+
+            <div class="campo">
+                <label>Data</label>
+                <input type="date" id="agendamento-data">
+            </div>
+
+            <div class="campo">
+                <label>Horário</label>
+                <select id="agendamento-horario">
+                    <option value="">Selecione o horário</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label>Serviços</label>
+                <div class="servicos-lista" id="lista-servicos"></div>
+            </div>
+
+            <div class="campo">
+                <label>Observações (opcional)</label>
+                <textarea id="agendamento-observacao" 
+                          placeholder="Ex: cliente tem alergia a determinado produto..."
+                          style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px; resize:vertical; min-height:80px;"></textarea>
+            </div>
+
+            <div class="total" id="total-agendamento">Total: R$ 0</div>
+
+            <button onclick="realizarAgendamento()">Confirmar agendamento</button>
+        </div>
+
+    </div>
+
+    <script src="/static/app.js"></script>
+
+</body>
+</html>

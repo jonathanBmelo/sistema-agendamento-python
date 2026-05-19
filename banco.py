@@ -19,7 +19,6 @@ def criar_tabelas():
     conn = conectar()
     cursor = conn.cursor()
 
-    # Tabela de clientes — sem senha, sem login
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS clientes (
             id       SERIAL PRIMARY KEY,
@@ -29,7 +28,6 @@ def criar_tabelas():
         )
     """)
 
-    # Tabela de serviços
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS servicos (
             id    SERIAL PRIMARY KEY,
@@ -38,7 +36,6 @@ def criar_tabelas():
         )
     """)
 
-    # Tabela de agendamentos
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agendamentos (
             id          SERIAL PRIMARY KEY,
@@ -49,7 +46,6 @@ def criar_tabelas():
         )
     """)
 
-    # Tabela que liga agendamentos aos serviços
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agendamento_servicos (
             agendamento_id  INTEGER NOT NULL REFERENCES agendamentos(id),
@@ -58,7 +54,6 @@ def criar_tabelas():
         )
     """)
 
-    # Tabela da atendente — só ela faz login
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS atendentes (
             id    SERIAL PRIMARY KEY,
@@ -171,16 +166,16 @@ def buscar_servicos():
 
     return servicos
 
-def salvar_agendamento(cliente_id, data, horario, servicos_escolhidos, total):
+def salvar_agendamento(cliente_id, data, horario, servicos_escolhidos, total, observacao=None):
     conn = conectar()
     cursor = conn.cursor()
 
     try:
         cursor.execute("""
-            INSERT INTO agendamentos (cliente_id, data, horario, total)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO agendamentos (cliente_id, data, horario, total, observacao)
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING id
-        """, (cliente_id, data, horario, total))
+        """, (cliente_id, data, horario, total, observacao))
 
         agendamento_id = cursor.fetchone()[0]
 
@@ -202,6 +197,32 @@ def salvar_agendamento(cliente_id, data, horario, servicos_escolhidos, total):
         print(f"Erro ao salvar agendamento: {erro}")
         return False
 
+def cancelar_agendamento(agendamento_id):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            DELETE FROM agendamento_servicos
+            WHERE agendamento_id = %s
+        """, (agendamento_id,))
+
+        cursor.execute("""
+            DELETE FROM agendamentos
+            WHERE id = %s
+        """, (agendamento_id,))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+
+    except Exception as erro:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        print(f"Erro ao cancelar agendamento: {erro}")
+        return False
 def buscar_agenda_do_dia(data):
     conn = conectar()
     cursor = conn.cursor()
@@ -212,10 +233,15 @@ def buscar_agenda_do_dia(data):
             c.nome,
             c.celular,
             a.horario,
-            a.total
+            a.total,
+            a.observacao,
+            STRING_AGG(s.nome, ', ' ORDER BY s.nome) AS servicos
         FROM agendamentos a
         JOIN clientes c ON c.id = a.cliente_id
+        JOIN agendamento_servicos as_ ON as_.agendamento_id = a.id
+        JOIN servicos s ON s.id = as_.servico_id
         WHERE a.data = %s
+        GROUP BY a.id, c.nome, c.celular, a.horario, a.total, a.observacao
         ORDER BY a.horario
     """, (data,))
 
@@ -224,13 +250,15 @@ def buscar_agenda_do_dia(data):
     conn.close()
 
     agenda = []
-    for id, nome, celular, horario, total in resultados:
+    for id, nome, celular, horario, total, observacao, servicos in resultados:
         agenda.append({
-            "id":      id,
-            "nome":    nome,
-            "celular": celular,
-            "horario": str(horario),
-            "total":   total
+            "id":         id,
+            "nome":       nome,
+            "celular":    celular,
+            "horario":    str(horario),
+            "total":      total,
+            "observacao": observacao,
+            "servicos":   servicos
         })
 
     return agenda
@@ -281,8 +309,112 @@ def cadastrar_atendente(nome, email, senha):
         conn.close()
         print("E-mail já cadastrado.")
         return False
+    
+def editar_cliente(cliente_id, nome, celular, email=None):
+    conn = conectar()
+    cursor = conn.cursor()
 
-# ── Só executa ao rodar banco.py diretamente ──
+    try:
+        cursor.execute("""
+            UPDATE clientes
+            SET nome = %s, celular = %s, email = %s
+            WHERE id = %s
+        """, (nome, celular, email, cliente_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"sucesso": True}
+
+    except Exception as erro:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        return {"sucesso": False, "erro": str(erro)}
+
+def excluir_cliente(cliente_id):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    try:
+        # Verifica se o cliente tem agendamentos
+        cursor.execute("""
+            SELECT COUNT(*) FROM agendamentos
+            WHERE cliente_id = %s
+        """, (cliente_id,))
+
+        quantidade = cursor.fetchone()[0]
+
+        if quantidade > 0:
+            cursor.close()
+            conn.close()
+            return {"sucesso": False, "erro": f"Cliente possui {quantidade} agendamento(s) e não pode ser excluído."}
+
+        cursor.execute("DELETE FROM clientes WHERE id = %s", (cliente_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"sucesso": True}
+
+    except Exception as erro:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        return {"sucesso": False, "erro": str(erro)}
+
+
+def editar_cliente(cliente_id, nome, celular, email=None):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE clientes
+            SET nome = %s, celular = %s, email = %s
+            WHERE id = %s
+        """, (nome, celular, email, cliente_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"sucesso": True}
+
+    except Exception as erro:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        return {"sucesso": False, "erro": str(erro)}
+
+def excluir_cliente(cliente_id):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT COUNT(*) FROM agendamentos
+            WHERE cliente_id = %s
+        """, (cliente_id,))
+
+        quantidade = cursor.fetchone()[0]
+
+        if quantidade > 0:
+            cursor.close()
+            conn.close()
+            return {"sucesso": False, "erro": f"Cliente possui {quantidade} agendamento(s) e não pode ser excluído."}
+
+        cursor.execute("DELETE FROM clientes WHERE id = %s", (cliente_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"sucesso": True}
+
+    except Exception as erro:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        return {"sucesso": False, "erro": str(erro)}
+    
+
 if __name__ == "__main__":
     criar_tabelas()
     popular_servicos()

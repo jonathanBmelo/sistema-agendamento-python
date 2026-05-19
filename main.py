@@ -1,19 +1,25 @@
 import traceback
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
-# DEPOIS
+
 from banco import (
     cadastrar_cliente,
     buscar_clientes,
+    editar_cliente,
+    excluir_cliente,
     buscar_servicos,
     salvar_agendamento,
+    cancelar_agendamento,
     buscar_agenda_do_dia,
     login_atendente
 )
 
 app = FastAPI(title="Sistema de Agendamento - Clínica de Estética")
+
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 @app.exception_handler(Exception)
 async def error_handler(request: Request, exc: Exception):
@@ -32,14 +38,30 @@ class LoginRequest(BaseModel):
 class ClienteRequest(BaseModel):
     nome:    str
     celular: str
-    email:   Optional[str] = None  # email é opcional
+    email:   Optional[str] = None
+
+class EditarClienteRequest(BaseModel):
+    nome:    str
+    celular: str
+    email:   Optional[str] = None
 
 class AgendamentoRequest(BaseModel):
     cliente_id:          int
-    data:                str  # formato: "AAAA-MM-DD"
-    horario:             str  # formato: "HH:MM"
+    data:                str
+    horario:             str
     servicos_escolhidos: list[int]
     total:               int
+    observacao:          Optional[str] = None
+# ─────────────────────────────────────────
+# Páginas
+# ─────────────────────────────────────────
+@app.get("/painel")
+def painel():
+    return FileResponse("frontend/index.html")
+
+@app.get("/login-page")
+def login_page():
+    return FileResponse("frontend/login.html")
 
 # ─────────────────────────────────────────
 # Rotas públicas
@@ -65,7 +87,7 @@ def listar_servicos():
     return {"servicos": lista}
 
 # ─────────────────────────────────────────
-# Rotas da atendente
+# Rotas de clientes
 # ─────────────────────────────────────────
 @app.post("/clientes")
 def cadastrar(dados: ClienteRequest):
@@ -80,6 +102,25 @@ def listar_clientes():
     clientes = buscar_clientes()
     return {"clientes": clientes}
 
+@app.put("/clientes/{id}")
+def editar(id: int, dados: EditarClienteRequest):
+    resultado = editar_cliente(id, dados.nome, dados.celular, dados.email)
+    if resultado["sucesso"]:
+        return {"mensagem": "Cliente atualizado com sucesso!"}
+    else:
+        return {"erro": resultado["erro"]}
+
+@app.delete("/clientes/{id}")
+def excluir(id: int):
+    resultado = excluir_cliente(id)
+    if resultado["sucesso"]:
+        return {"mensagem": "Cliente excluído com sucesso!"}
+    else:
+        return {"erro": resultado["erro"]}
+
+# ─────────────────────────────────────────
+# Rotas de agendamento
+# ─────────────────────────────────────────
 @app.post("/agendamento")
 def agendar(dados: AgendamentoRequest):
     sucesso = salvar_agendamento(
@@ -87,12 +128,21 @@ def agendar(dados: AgendamentoRequest):
         data=dados.data,
         horario=dados.horario,
         servicos_escolhidos=dados.servicos_escolhidos,
-        total=dados.total
+        total=dados.total,
+        observacao=dados.observacao
     )
     if sucesso:
         return {"mensagem": "Agendamento realizado com sucesso!"}
     else:
         return {"erro": "Erro ao realizar agendamento."}
+    
+@app.delete("/agendamento/{id}")
+def cancelar(id: int):
+    sucesso = cancelar_agendamento(id)
+    if sucesso:
+        return {"mensagem": "Agendamento cancelado com sucesso!"}
+    else:
+        return {"erro": "Erro ao cancelar agendamento."}
 
 @app.get("/agenda/{data}")
 def agenda_do_dia(data: str):
