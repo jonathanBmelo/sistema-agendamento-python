@@ -10,7 +10,7 @@ load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 SECRET_KEY  = os.getenv("SECRET_KEY")
 ALGORITHM   = "HS256"
-EXPIRACAO   = 8  # horas
+EXPIRACAO   = 8  
 
 security = HTTPBearer()
 

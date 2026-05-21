@@ -63,7 +63,6 @@ python -m uvicorn main:app --reload
 ```
 
 **7. Acesse o sistema**
-http://localhost:8000/login-page
 
 ## 📁 Estrutura do projeto
 sistema-agendamento-python/

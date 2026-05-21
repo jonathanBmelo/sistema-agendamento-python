@@ -1,0 +1,28 @@
+services:
+
+  # ── Banco de dados ──
+  db:
+    image: postgres:18
+    container_name: agendamento_db
+    environment:
+      POSTGRES_DB:       agendamento
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  # ── Aplicação ──
+  app:
+    build: .
+    container_name: agendamento_app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
