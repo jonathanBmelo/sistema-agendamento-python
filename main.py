@@ -1,3 +1,5 @@
+from auth import gerar_token, verificar_token
+from fastapi import Depends
 import traceback
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
@@ -14,6 +16,7 @@ from banco import (
     salvar_agendamento,
     cancelar_agendamento,
     buscar_agenda_do_dia,
+    buscar_horarios_ocupados,
     login_atendente
 )
 
@@ -52,6 +55,7 @@ class AgendamentoRequest(BaseModel):
     servicos_escolhidos: list[int]
     total:               int
     observacao:          Optional[str] = None
+
 # ─────────────────────────────────────────
 # Páginas
 # ─────────────────────────────────────────
@@ -74,10 +78,11 @@ def inicio():
 def login(dados: LoginRequest):
     atendente = login_atendente(dados.email, dados.senha)
     if atendente:
-        return {"mensagem": f"Bem-vinda, {atendente['nome']}!", "atendente": atendente}
+        token = gerar_token({"id": atendente["id"], "email": atendente["email"]})
+        return {"token": token, "atendente": atendente}
     else:
         return {"erro": "E-mail ou senha inválidos."}
-
+    
 @app.get("/servicos")
 def listar_servicos():
     servicos = buscar_servicos()
@@ -89,21 +94,21 @@ def listar_servicos():
 # ─────────────────────────────────────────
 # Rotas de clientes
 # ─────────────────────────────────────────
+@app.get("/clientes")
+def listar_clientes(token=Depends(verificar_token)):
+    clientes = buscar_clientes()
+    return {"clientes": clientes}
+
 @app.post("/clientes")
-def cadastrar(dados: ClienteRequest):
+def cadastrar(dados: ClienteRequest, token=Depends(verificar_token)):
     resultado = cadastrar_cliente(dados.nome, dados.celular, dados.email)
     if resultado["sucesso"]:
         return {"mensagem": "Cliente cadastrado com sucesso!", "cliente_id": resultado["cliente_id"]}
     else:
         return {"erro": resultado["erro"]}
 
-@app.get("/clientes")
-def listar_clientes():
-    clientes = buscar_clientes()
-    return {"clientes": clientes}
-
 @app.put("/clientes/{id}")
-def editar(id: int, dados: EditarClienteRequest):
+def editar(id: int, dados: EditarClienteRequest, token=Depends(verificar_token)):
     resultado = editar_cliente(id, dados.nome, dados.celular, dados.email)
     if resultado["sucesso"]:
         return {"mensagem": "Cliente atualizado com sucesso!"}
@@ -111,19 +116,16 @@ def editar(id: int, dados: EditarClienteRequest):
         return {"erro": resultado["erro"]}
 
 @app.delete("/clientes/{id}")
-def excluir(id: int):
+def excluir(id: int, token=Depends(verificar_token)):
     resultado = excluir_cliente(id)
     if resultado["sucesso"]:
         return {"mensagem": "Cliente excluído com sucesso!"}
     else:
         return {"erro": resultado["erro"]}
 
-# ─────────────────────────────────────────
-# Rotas de agendamento
-# ─────────────────────────────────────────
 @app.post("/agendamento")
-def agendar(dados: AgendamentoRequest):
-    sucesso = salvar_agendamento(
+def agendar(dados: AgendamentoRequest, token=Depends(verificar_token)):
+    resultado = salvar_agendamento(
         cliente_id=dados.cliente_id,
         data=dados.data,
         horario=dados.horario,
@@ -131,20 +133,25 @@ def agendar(dados: AgendamentoRequest):
         total=dados.total,
         observacao=dados.observacao
     )
-    if sucesso:
+    if resultado["sucesso"]:
         return {"mensagem": "Agendamento realizado com sucesso!"}
     else:
-        return {"erro": "Erro ao realizar agendamento."}
-    
+        return {"erro": resultado["erro"]}
+
 @app.delete("/agendamento/{id}")
-def cancelar(id: int):
+def cancelar(id: int, token=Depends(verificar_token)):
     sucesso = cancelar_agendamento(id)
     if sucesso:
         return {"mensagem": "Agendamento cancelado com sucesso!"}
     else:
         return {"erro": "Erro ao cancelar agendamento."}
 
+@app.get("/horarios-ocupados/{data}")
+def horarios_ocupados(data: str, token=Depends(verificar_token)):
+    ocupados = buscar_horarios_ocupados(data)
+    return {"ocupados": ocupados}
+
 @app.get("/agenda/{data}")
-def agenda_do_dia(data: str):
+def agenda_do_dia(data: str, token=Depends(verificar_token)):
     agenda = buscar_agenda_do_dia(data)
     return {"data": data, "agendamentos": agenda}

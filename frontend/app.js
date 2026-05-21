@@ -1,5 +1,14 @@
 const API = "http://localhost:8000";
 
+// Helper para enviar token em todas as requisições
+function authHeaders() {
+    const token = localStorage.getItem("token");
+    return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+    };
+}
+
 // ─────────────────────────────────────────
 // LOGIN
 // ─────────────────────────────────────────
@@ -23,6 +32,7 @@ async function fazerLogin() {
     }
 
     localStorage.setItem("atendente", JSON.stringify(dados.atendente));
+    localStorage.setItem("token", dados.token);
     window.location.href = "/painel";
 }
 
@@ -46,11 +56,12 @@ async function iniciarPainel() {
     await carregarClientes();
     await carregarServicos();
     await buscarAgenda();
-    gerarHorarios();
+    await gerarHorarios();
 }
 
 function sair() {
     localStorage.removeItem("atendente");
+    localStorage.removeItem("token");
     window.location.href = "/login-page";
 }
 
@@ -63,8 +74,10 @@ async function buscarAgenda() {
 
     if (!data) return;
 
-    const resposta = await fetch(`${API}/agenda/${data}`);
-    const dados    = await resposta.json();
+    const resposta = await fetch(`${API}/agenda/${data}`, {
+        headers: authHeaders()
+    });
+    const dados = await resposta.json();
 
     if (dados.agendamentos.length === 0) {
         corpo.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#aaa;">Nenhum agendamento para esta data</td></tr>`;
@@ -97,9 +110,11 @@ async function buscarAgenda() {
 let todosClientes = [];
 
 async function carregarClientes() {
-    const resposta = await fetch(`${API}/clientes`);
-    const dados    = await resposta.json();
-    todosClientes  = dados.clientes;
+    const resposta = await fetch(`${API}/clientes`, {
+        headers: authHeaders()
+    });
+    const dados = await resposta.json();
+    todosClientes = dados.clientes;
 }
 
 function filtrarClientes() {
@@ -158,7 +173,7 @@ async function cadastrarCliente() {
 
     const resposta = await fetch(`${API}/clientes`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ nome, celular, email: email || null })
     });
 
@@ -184,9 +199,11 @@ async function cadastrarCliente() {
 // SERVIÇOS
 // ─────────────────────────────────────────
 async function carregarServicos() {
-    const resposta = await fetch(`${API}/servicos`);
-    const dados    = await resposta.json();
-    const lista    = document.getElementById("lista-servicos");
+    const resposta = await fetch(`${API}/servicos`, {
+        headers: authHeaders()
+    });
+    const dados = await resposta.json();
+    const lista = document.getElementById("lista-servicos");
 
     lista.innerHTML = dados.servicos.map(s => `
         <label class="servico-item">
@@ -198,27 +215,39 @@ async function carregarServicos() {
 
 function calcularTotal() {
     const checkboxes = document.querySelectorAll("#lista-servicos input:checked");
-    const total = Array.from(checkboxes).reduce((soma, cb) => soma + parseInt(cb.dataset.preco), 0);
-    document.getElementById("total-agendamento").textContent = `Total: R$ ${total}`;
+    const total = Array.from(checkboxes).reduce((soma, cb) => soma + parseFloat(cb.dataset.preco), 0);
+    document.getElementById("total-agendamento").textContent = `Total: R$ ${total.toFixed(2)}`;
 }
 
 // ─────────────────────────────────────────
 // HORÁRIOS
 // ─────────────────────────────────────────
-function gerarHorarios() {
+async function gerarHorarios() {
     const select = document.getElementById("agendamento-horario");
     const data   = document.getElementById("agendamento-data").value;
-    const dia    = new Date(data + "T00:00:00").getDay();
 
+    if (!data) return;
+
+    const dia    = new Date(data + "T00:00:00").getDay();
     const fim    = dia === 6 ? "11:30" : "17:30";
     let hora     = new Date(`2000-01-01T08:00:00`);
     const limite = new Date(`2000-01-01T${fim}:00`);
+
+    const resposta = await fetch(`${API}/horarios-ocupados/${data}`, {
+        headers: authHeaders()
+    });
+    const dados    = await resposta.json();
+    const ocupados = dados.ocupados;
 
     select.innerHTML = `<option value="">Selecione o horário</option>`;
 
     while (hora <= limite) {
         const h = hora.toTimeString().substring(0, 5);
-        select.innerHTML += `<option value="${h}">${h}</option>`;
+
+        if (!ocupados.includes(h)) {
+            select.innerHTML += `<option value="${h}">${h}</option>`;
+        }
+
         hora = new Date(hora.getTime() + 30 * 60000);
     }
 }
@@ -239,7 +268,7 @@ async function realizarAgendamento() {
 
     const checkboxes = document.querySelectorAll("#lista-servicos input:checked");
     const servicos   = Array.from(checkboxes).map(cb => parseInt(cb.value));
-    const total      = Array.from(checkboxes).reduce((soma, cb) => soma + parseInt(cb.dataset.preco), 0);
+    const total      = Array.from(checkboxes).reduce((soma, cb) => soma + parseFloat(cb.dataset.preco), 0);
 
     if (!cliente_id || !data || !horario || servicos.length === 0) {
         erro.textContent   = "Preencha todos os campos e selecione ao menos um serviço.";
@@ -249,7 +278,7 @@ async function realizarAgendamento() {
 
     const resposta = await fetch(`${API}/agendamento`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ cliente_id, data, horario, servicos_escolhidos: servicos, total, observacao: observacao || null })
     });
 
@@ -267,6 +296,7 @@ async function realizarAgendamento() {
     document.getElementById("data-agenda").value = data;
     document.getElementById("agendamento-observacao").value = "";
     await buscarAgenda();
+    await gerarHorarios();
 
     checkboxes.forEach(cb => cb.checked = false);
     calcularTotal();
@@ -279,7 +309,8 @@ async function cancelarAgendamento(id) {
     if (!confirm("Tem certeza que deseja cancelar este agendamento?")) return;
 
     const resposta = await fetch(`${API}/agendamento/${id}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: authHeaders()
     });
 
     const dados = await resposta.json();
@@ -291,6 +322,7 @@ async function cancelarAgendamento(id) {
 
     alert("Agendamento cancelado com sucesso!");
     await buscarAgenda();
+    await gerarHorarios();
 }
 
 // ─────────────────────────────────────────
@@ -367,7 +399,7 @@ async function salvarEdicao() {
 
     const resposta = await fetch(`${API}/clientes/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ nome, celular, email: email || null })
     });
 
@@ -391,7 +423,8 @@ async function excluirCliente(id, nome) {
     if (!confirm(`Tem certeza que deseja excluir o cliente "${nome}"?`)) return;
 
     const resposta = await fetch(`${API}/clientes/${id}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: authHeaders()
     });
 
     const dados = await resposta.json();
