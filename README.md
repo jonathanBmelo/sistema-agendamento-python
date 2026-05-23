@@ -1,6 +1,8 @@
 # 💆 Sistema de Agendamento — Clínica de Estética
 
-Sistema de agendamento interno para clínicas de estética, desenvolvido em Python com API REST, banco de dados PostgreSQL, autenticação JWT e interface web. Totalmente containerizado com Docker.
+Sistema de agendamento interno para clínicas de estética, desenvolvido em Python com API REST, banco de dados PostgreSQL, autenticação JWT e interface web. Totalmente containerizado com Docker e deployado em produção.
+
+🌐 **Demo:** [sistema-agendamento-python-production.up.railway.app](https://sistema-agendamento-python-production.up.railway.app/login-page)
 
 ## ✨ Funcionalidades
 
@@ -29,6 +31,7 @@ Sistema de agendamento interno para clínicas de estética, desenvolvido em Pyth
 - python-dotenv
 - HTML + CSS + JavaScript
 - Docker + Docker Compose
+- Railway (Deploy)
 
 ## 🐳 Como rodar com Docker
 
@@ -39,6 +42,12 @@ cd sistema-agendamento-python
 ```
 
 **2. Crie o arquivo `.env`**
+DB_HOST=db
+DB_NAME=agendamento
+DB_USER=postgres
+DB_PASSWORD=sua_senha
+SECRET_KEY=sua_chave_secreta
+
 **3. Suba os containers**
 ```bash
 docker-compose up
@@ -64,7 +73,13 @@ http://localhost:8000/login-page
 pip install -r requirements.txt
 ```
 
-**2. Configure o `.env`**
+**2. Crie o arquivo `.env`**
+
+DB_HOST=localhost
+DB_NAME=agendamento
+DB_USER=postgres
+DB_PASSWORD=sua_senha
+SECRET_KEY=sua_chave_secreta
 
 **3. Inicialize o banco**
 ```bash
@@ -77,6 +92,7 @@ python -m uvicorn main:app --reload
 ```
 
 **5. Acesse o sistema**
+
 http://localhost:8000/login-page
 
 ## 📁 Estrutura do projeto
@@ -102,8 +118,8 @@ sistema-agendamento-python/
 
 - [ ] Confirmação de agendamento via WhatsApp
 - [ ] Histórico de agendamentos do cliente
-- [ ] Deploy em nuvem
 
 ## 👨‍💻 Autor
 
-Jonathan Melo — [GitHub](https://github.com/jonathanBmelo)
+Jonathan Melo — [GitHub](https://github.com/jonathanBmelo) | [LinkedIn](https://www.linkedin.com/in/jonathan-melo)
+
