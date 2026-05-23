@@ -1,4 +1,4 @@
-const API = "http://localhost:8000";
+const API = window.location.origin;
 
 // Helper para enviar token em todas as requisições
 function authHeaders() {
